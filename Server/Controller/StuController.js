@@ -21,7 +21,13 @@ const InsertData = async(req,res)=>{
 }
 
 
+const DisplayData  =async(req,res)=>{
+    const Data = await StuModel.find();
+    res.status(200).send(Data);
+}
+
 module.exports = {
     InsertData,
+    DisplayData
 
 }

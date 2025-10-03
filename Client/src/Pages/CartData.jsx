@@ -3,8 +3,10 @@ import Table from 'react-bootstrap/Table';
 import { FaMinus } from "react-icons/fa";
 import { FaPlus } from "react-icons/fa";
 import { Decrement, Increment, RemoveItem } from "../CartSlice";
+import { useNavigate } from "react-router-dom";
 
 const CartData = ()=>{
+    const navigate = useNavigate();
     const dispatch = useDispatch();
     const Product = useSelector(state=>state.mycart.cart);
     console.log(Product);
@@ -55,6 +57,9 @@ const CartData = ()=>{
         {ans}
       </tbody>
       </Table>
+
+
+      <h4 onClick={()=>{navigate("/checkout")}} >CheckOut</h4>
         
         </>
     )

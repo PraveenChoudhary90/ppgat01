@@ -25,6 +25,13 @@ mongoose.connect(process.env.CONNECTION).then(()=>{
 })
 
 
+// PayPal Configuration
+paypal.configure({
+  mode: "sandbox", // Change to 'live' for production
+  client_id: process.env.PAYPAL_CLIENT_ID,
+  client_secret: process.env.PAYPAL_CLIENT_SECRET
+});
+
 // 🔗 API to create a payment
 app.post("/api/pay", (req, res) => {
   const { total } = req.body;

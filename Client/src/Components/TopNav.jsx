@@ -1,11 +1,14 @@
 import Container from 'react-bootstrap/Container';
 import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { MdLocalGroceryStore } from "react-icons/md";
 import { useSelector } from 'react-redux';
 
 const TopNav =()=>{
+
+
+  const navigate =useNavigate();
     
   const Product = useSelector(state=>state.mycart.cart);
   console.log(Product);
@@ -22,7 +25,7 @@ const TopNav =()=>{
             <Nav.Link as={Link}   to="about">About</Nav.Link>
             <Nav.Link  as={Link}  to="insert">InsertFrom</Nav.Link>
           </Nav>
-        <MdLocalGroceryStore />{proLength}
+        <MdLocalGroceryStore onClick={()=>{navigate("/cartdata")}} />{proLength}
         </Container>
       </Navbar>
         </>

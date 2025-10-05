@@ -25,6 +25,9 @@ mongoose.connect(process.env.CONNECTION).then(()=>{
 })
 
 
+
+
+
 // PayPal Configuration
 paypal.configure({
   mode: "sandbox", // Change to 'live' for production
@@ -118,7 +121,7 @@ app.get("/api/success", async (req, res) => {
       });
 
       await newPayment.save();
-      res.redirect("http://localhost:8000/success");
+      res.redirect("http://localhost:5173/success");
     } catch (err) {
       console.error("❌ DB Save Error:", err);
       res.status(500).send("Payment successful, but error saving to DB");

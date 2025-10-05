@@ -29,12 +29,23 @@ mongoose.connect(process.env.CONNECTION).then(()=>{
 paypal.configure({
   mode: "sandbox", // Change to 'live' for production
   client_id: process.env.PAYPAL_CLIENT_ID,
-  client_secret: process.env.PAYPAL_CLIENT_SECRET
+  client_secret: process.env.PAYPAL_CLIENT_SECRET,
 });
 
-// 🔗 API to create a payment
+// ==========================
+// 📤 Create PayPal Payment
+// ==========================
 app.post("/api/pay", (req, res) => {
-  const { total } = req.body;
+  const { total, cartItems } = req.body;
+
+  // Convert items to PayPal format
+  const items = cartItems.map((item) => ({
+    name: item.name,
+    sku: item._id || item.productId || "SKU",
+    price: Number(item.price).toFixed(2),
+    currency: "USD",
+    quantity: parseInt(item.qty),
+  }));
 
   const create_payment_json = {
     intent: "sale",
@@ -42,24 +53,28 @@ app.post("/api/pay", (req, res) => {
       payment_method: "paypal",
     },
     redirect_urls: {
-      return_url: "http://localhost:8000/success",
-      cancel_url: "http://localhost:8000/cancel",
+      return_url: "http://localhost:8000/api/success",
+      cancel_url: "http://localhost:8000/api/cancel",
     },
     transactions: [
       {
+        item_list: {
+          items: items,
+        },
         amount: {
           currency: "USD",
-          total: total.toString(),
+          total: Number(total).toFixed(2),
         },
-        description: "Payment from My React App",
+        description: "Payment from React App",
       },
     ],
   };
 
-  paypal.payment.create(create_payment_json, function (error, payment) {
+  // Create PayPal payment
+  paypal.payment.create(create_payment_json, (error, payment) => {
     if (error) {
-      console.error(error.response);
-      res.status(500).send("Error creating PayPal payment");
+      console.error("❌ PayPal Payment Error:", JSON.stringify(error.response, null, 2));
+      return res.status(500).json({ error: error.response });
     } else {
       const approvalUrl = payment.links.find((link) => link.rel === "approval_url");
       res.json({ approvalUrl: approvalUrl.href });
@@ -67,52 +82,56 @@ app.post("/api/pay", (req, res) => {
   });
 });
 
-
-// ✅ Keep only this version
+// ==========================
+// ✅ Payment Success Route
+// ==========================
 app.get("/api/success", async (req, res) => {
   const payerId = req.query.PayerID;
   const paymentId = req.query.paymentId;
 
-  try {
-    const execute_payment_json = {
-      payer_id: payerId,
-    };
+  const execute_payment_json = { payer_id: payerId };
 
-    paypal.payment.execute(paymentId, execute_payment_json, async function (error, payment) {
-      if (error) {
-        console.error(error.response);
-        res.status(500).send("Payment failed");
-      } else {
-        const cartItems = payment.transactions[0].item_list?.items || [];
-        const amount = payment.transactions[0].amount.total;
+  paypal.payment.execute(paymentId, execute_payment_json, async (error, payment) => {
+    if (error) {
+      console.error("❌ Payment Execution Error:", JSON.stringify(error.response, null, 2));
+      return res.status(500).send("Payment execution failed");
+    }
 
-        const newPayment = new Payment({
-          cartItems: cartItems.map(item => ({
-            productId: item.sku,
-            name: item.name,
-            price: item.price,
-            qty: item.quantity,
-            color: item.color,
-            brand: item.brand,
-            image: item.image
-          })),
-          totalAmount: amount,
-          paymentId,
-          payerId,
-          status: payment.state
-        });
+    try {
+      const items = payment.transactions[0].item_list?.items || [];
+      const amount = payment.transactions[0].amount.total;
 
-        await newPayment.save();
+      const newPayment = new Payment({
+        cartItems: items.map((item) => ({
+          productId: item.sku,
+          name: item.name,
+          price: item.price,
+          qty: item.quantity,
+          color: item.color || "",
+          brand: item.brand || "",
+          image: item.image || "",
+        })),
+        totalAmount: amount,
+        paymentId,
+        payerId,
+        status: payment.state,
+      });
 
-        res.redirect("http://localhost:8000/success");
-      }
-    });
-  } catch (err) {
-    console.error("Error saving payment:", err);
-    res.status(500).send("Internal Server Error");
-  }
+      await newPayment.save();
+      res.redirect("http://localhost:8000/success");
+    } catch (err) {
+      console.error("❌ DB Save Error:", err);
+      res.status(500).send("Payment successful, but error saving to DB");
+    }
+  });
 });
 
+// ==========================
+// ❌ Payment Cancel Route
+// ==========================
+app.get("/api/cancel", (req, res) => {
+  res.redirect("http://localhost:8000/cancel");
+});
 
 
 const port = process.env.PORT 
